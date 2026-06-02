@@ -74,12 +74,45 @@ def predict(features: SpotifyFeatures) -> PredictionResponse:
 
 def predict_genre(features: SpotifyFeatures) -> PredictionResponse:
     """
-    TODO: Load the MLflow model (baked into the container) and perform inference.
+    **IMPORTANT: This is an intentionally incomplete skeleton for students to implement.**
+    
+    Students must:
+    1. Load the MLflow model registered with the @champion alias
+       - The model is baked into the Docker container at ./models/
+       - Use: mlflow.sklearn.load_model("models:/champion@champion/production")
+    2. Convert SpotifyFeatures to the format expected by the model
+       - Extract feature values in the correct order (order matters for sklearn models)
+       - Must match the 12 audio features used during training
+    3. Perform inference on the 12 audio features
+    4. Map the predicted class index back to genre name
+    5. Return a PredictionResponse with the genre and confidence score
 
-    For now, returns a placeholder response.
-    In production, load the model like:
+    Example implementation structure:
         import mlflow
+        from sklearn.preprocessing import LabelEncoder
+        
+        # Load model once (consider caching for performance)
         model = mlflow.sklearn.load_model("models:/champion@champion/production")
-        prediction = model.predict([features.model_dump().values()])
+        
+        # Extract features in correct order matching training data
+        feature_names = [
+            'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
+            'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms'
+        ]
+        feature_vector = [getattr(features, name) for name in feature_names]
+        
+        # Make prediction
+        prediction = model.predict([feature_vector])
+        
+        # Get confidence (probability of predicted class)
+        # For probability estimates: model.predict_proba([feature_vector])
+        
+        # Map class index to genre name
+        genres = ['Rock', 'Pop', 'Electronic', 'Folk', 'Country', 'Hip-Hop', 'R&B', 'Jazz', 'Blues', 'Classical']
+        predicted_genre = genres[prediction[0]]
+        
+        return PredictionResponse(genre=predicted_genre, confidence=confidence)
+    
+    For now, returns a placeholder response so API tests pass:
     """
     return PredictionResponse(genre="Pop", confidence=0.85)

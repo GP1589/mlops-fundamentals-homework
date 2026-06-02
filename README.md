@@ -8,13 +8,27 @@ In this homework, you will implement a complete, production-ready MLOps pipeline
 
 **550k Spotify Songs** from Kaggle:
 - **550,000 songs** with complete metadata and audio features
-- **Audio features**: danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_ms
-- **Target**: Genre (10 main categories: Rock, Pop, Electronic, Folk, Country, Hip-Hop, R&B, Jazz, Blues, Classical)
-- **Temporal data**: Release year (1960-2024) for simulating production drift
+- **File location**: Save as `songs.csv` in the `data_pipeline/` directory
 - **Download**: https://www.kaggle.com/datasets/serkantysz/550k-spotify-songs-audio-lyrics-and-genres
 - **Note**: Requires Kaggle API authentication (see Setup section)
 
-The task is to **classify music genre** from audio features. The release years are used to simulate real-world data drift: train on pre-2010 data (CD/iTunes era), test on post-2010 data (Spotify/streaming era). All 12 audio features show statistically significant drift across this boundary.
+### Audio Features (12 total)
+Your model should use these **12 audio features** as inputs:
+- `danceability`, `energy`, `key`, `loudness`, `mode`, `speechiness`
+- `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`, `duration_ms`
+
+**Target**: `genre` column (10 main categories: Rock, Pop, Electronic, Folk, Country, Hip-Hop, R&B, Jazz, Blues, Classical)
+
+**Other columns** (metadata — students can choose to include or ignore):
+- `id`, `name`, `album_name`, `artists`, `lyrics` (track metadata)
+- `popularity`, `total_artist_followers`, `avg_artist_popularity`, `artist_ids`, `niche_genres` (popularity metrics)
+
+### Temporal Split: The 2010 Streaming Era Boundary
+The task is to **classify music genre** while detecting **data drift**:
+- **Training Data** (year ≤ 2010): CD/iTunes era — longer songs, more acoustic, higher emotional valence
+- **Production Data** (year > 2010): Spotify/streaming era — shorter, punchier, more electronic, heavily compressed
+- **Why 2010?** This marks the launch of Spotify and shift to streaming-dominant music consumption
+- **Data Drift**: All 12 audio features show statistically significant drift across this boundary, simulating real-world model degradation
 
 ## Project Structure (Monorepo)
 
@@ -98,20 +112,24 @@ Located in `data_pipeline/`.
 
 #### 1.1 Download (`src/download.py`)
 - **Status**: Skeleton provided
-- **TODO**: Load the Kaggle CSV file (already downloaded) and prepare raw data
-- **Input**: `params.yaml` with `data.source_path` (path to the downloaded CSV)
+- **TODO**: Load the Kaggle CSV file and prepare raw data
+- **Input**: `params.yaml` with `data.source_path` pointing to `songs.csv`
 - **Output**: `data/raw.csv` (all columns from Kaggle dataset)
-- **Notes**: The Kaggle dataset is in CSV format. Keep all audio features and the genre column.
+- **Notes**: 
+  - Ensure the downloaded CSV is saved as `songs.csv` in the `data_pipeline/` directory
+  - Keep all columns from the Kaggle dataset
+  - The function should not filter columns — that happens in `process.py`
 - **Test**: `pytest data_pipeline/tests/test_process.py`
 
 #### 1.2 Process (`src/process.py`)
 - **Status**: Skeleton provided with implementation guidance
 - **TODO**: Complete the function
-- **Input**: Raw dataset, `year_threshold` from `params.yaml` (default 2010)
+- **Input**: Raw dataset, `year_threshold` from `params.yaml` (**set to 2010** — not 2005)
 - **Output**: 
   - `data/train.csv` (year ≤ 2010) — Pre-streaming era data for model training
   - `data/prod_sim.csv` (year > 2010) — Streaming era data for drift detection
 - **Key**: This is a **temporal split**, not random. You will detect drift: pre-2010 music (CD/iTunes) vs post-2010 (Spotify) have significantly different audio feature distributions.
+  - **Important**: `year_threshold = 2010` marks the streaming era shift. This boundary is where statistically significant drift occurs across all 12 audio features.
 - **Columns**: Include all audio features (danceability, energy, key, etc.), genre (target), and year (for reference)
 
 #### 1.3 Train (`src/train.py`)
@@ -162,6 +180,7 @@ Located in `model_serving/`.
   - Return the predicted genre (one of: Rock, Pop, Electronic, Folk, Country, Hip-Hop, R&B, Jazz, Blues, Classical)
   - Request logging is **already implemented** (logs to `logs/api_requests.jsonl`)
   - Handle errors gracefully with HTTP 500 if prediction fails
+- **Implementation guidance**: See `predict_genre()` docstring in `main.py` for detailed instructions including model loading example
 
 #### 2.2 Tests (`tests/test_api.py`)
 - **Status**: Real tests provided (no placeholder assertions)
@@ -172,14 +191,34 @@ Located in `model_serving/`.
   ```
 
 #### 2.3 Dockerfile (`Dockerfile`)
-- **Status**: Skeleton with comments on MLflow model pulling
-- **TODO**: Add a build step to pull the `@champion` aliased model from MLflow
-- **Example**:
-  ```dockerfile
-  ARG MLFLOW_TRACKING_URI=http://mlflow:5000
-  RUN mlflow models download -m models:/champion@champion -d ./models --no-directory
+- **Status**: Implementation provided with MLflow model pulling
+- **Key features**:
+  - Accepts `MLFLOW_TRACKING_URI` as a build argument (default: `http://localhost:5000`)
+  - Downloads the `@champion` aliased model from MLflow during build
+  - Requires MLflow server to be running at build time
+- **Local development**: Default `http://localhost:5000` works if you run MLflow locally
+- **Overriding MLflow URI**: When building in different environments:
+  ```bash
+  docker build --build-arg MLFLOW_TRACKING_URI=http://mlflow-host:5000 .
   ```
-- **Note**: The model will be saved to the container's `./models` directory
+- **Note**: The model is saved to `./models/` directory in the container
+
+##### MLflow Model Loading
+
+Students must implement the following in the `predict_genre()` function:
+```python
+mlflow.sklearn.load_model("models:/champion@champion/production")
+```
+
+This loads the production version of the champion model from MLflow.
+
+**Important Networking Note**:
+- **Local development** (MLflow on your machine): Use `http://localhost:5000` as the tracking URI
+- **Docker internal network** (if using docker-compose): Use `http://mlflow:5000` for container-to-container communication
+- **Docker build time**: The build process runs on your machine, so use `http://localhost:5000` to download the model
+- **Docker runtime**: The container uses the URI passed at build time or set as an environment variable to access MLflow at prediction time
+
+If the model loading fails with "Connection refused" in the Docker container, verify that MLflow is accessible from the container's network context.
 
 ### 3. Drift Monitoring (Batch)
 Located in `drift_monitoring/`.
@@ -223,6 +262,26 @@ Located in `.github/workflows/ci.yml`.
 - [ ] Drift monitoring script runs without errors
 - [ ] GitHub Actions workflow passes (green checkmark on PR)
 - [ ] All TODO comments in your code are addressed or justified
+
+## MLflow Networking: localhost vs Docker
+
+**Local Development**:
+- MLflow server: `http://localhost:5000`
+- Python code: `mlflow.set_tracking_uri("http://localhost:5000")`
+- All components (Python, MLflow) run on your machine
+
+**Docker Deployment**:
+- MLflow server external: `http://localhost:5000` (from your machine)
+- MLflow server in Docker network: `http://mlflow:5000` (service name, if using docker-compose)
+- Docker build (pulling model): Use `http://localhost:5000` or override with `--build-arg`
+- Container runtime: Use the URI passed to the build or set as environment variable
+
+**Quick fix**: If Dockerfile build fails with "Connection refused", ensure MLflow is running:
+```bash
+mlflow server --host 0.0.0.0 --port 5000
+```
+
+---
 
 ## Troubleshooting
 
@@ -276,6 +335,21 @@ mlflow models list
 
 # Check model URI format
 # Should be: runs:/{run_id}/model (not models:/)
+```
+
+**Column Names Don't Match**:
+```bash
+# If CSV has different column names than expected, check the actual column names:
+python -c "import pandas as pd; df = pd.read_csv('data_pipeline/songs.csv'); print(df.columns.tolist())"
+
+# Common issues:
+# - Audio feature column names differ from Spotify API (e.g., 'danceability_score' instead of 'danceability')
+# - Target column named 'genre_name' or 'music_genre' instead of 'genre'
+# - Year column named 'release_year' or 'year_released' instead of 'year'
+
+# Solution:
+# Update process.py to rename columns to match expected names before splitting:
+# df = df.rename(columns={'danceability_score': 'danceability', ...})
 ```
 
 ---

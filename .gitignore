@@ -1,0 +1,71 @@
+# Dataset
+songs.csv
+*.csv.gz
+data/raw.csv
+data/train.csv
+data/prod_sim.csv
+data/
+
+# Models and artifacts
+models/
+mlruns/
+*.pkl
+*.joblib
+*.joblib.z
+
+# API logs (production data)
+logs/
+api_requests.jsonl
+drift_report.json
+metrics.json
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+.tmp/
+tmp/
+*.log

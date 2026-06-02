@@ -10,7 +10,7 @@ def process_data(
     input_path: str,
     train_output: str,
     prod_output: str,
-    year_threshold: int = 2005
+    year_threshold: int = 2010
 ):
     """
     Load and split the Spotify dataset temporally by release year.
@@ -18,11 +18,15 @@ def process_data(
     **Responsibility**: Load raw CSV, filter/select columns, and split into train/prod.
     This creates a temporal train/test split to simulate real-world data drift.
 
+    **Note**: 2010 marks the streaming era shift in music, serving as the boundary
+    between training data (pre-streaming era) and production data (streaming era).
+    This aligns with Spotify's launch and the transition to streaming-dominant music consumption.
+
     Args:
         input_path: Path to raw dataset CSV (from download.py)
         train_output: Path to save training data (year <= threshold)
         prod_output: Path to save production data (year > threshold)
-        year_threshold: Year to split on (default 2005)
+        year_threshold: Year to split on (default 2010, marks streaming era shift)
 
     TODO:
         1. Load CSV with headers
@@ -60,7 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("--input_path", type=str, required=True)
     parser.add_argument("--train_output", type=str, required=True)
     parser.add_argument("--prod_output", type=str, required=True)
-    parser.add_argument("--year_threshold", type=int, default=2005)
+    parser.add_argument("--year_threshold", type=int, default=2010)
     args = parser.parse_args()
 
     process_data(

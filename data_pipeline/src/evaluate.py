@@ -67,8 +67,28 @@ def evaluate_and_register(train_data_path: str = "data/train.csv"):
     model_uri = f"runs:/{best_run.info.run_id}/model"
     model_name = "spotify-genre-classifier"
 
-    # TODO: Register the model in MLflow Model Registry
-    # TODO: Assign the @champion alias to this model version
+    try:
+        # Register the model in MLflow Model Registry
+        logger.info(f"Registering model '{model_name}' from run {best_run.info.run_id}...")
+        registered_model = client.create_model_version(
+            name=model_name,
+            source=model_uri,
+            run_id=best_run.info.run_id
+        )
+        logger.info(f"Model registered successfully. Version: {registered_model.version}")
+
+        # Assign the @champion alias to this model version
+        logger.info(f"Setting 'champion' alias for version {registered_model.version}...")
+        client.set_registered_model_alias(
+            name=model_name,
+            alias="champion",
+            version=registered_model.version
+        )
+        logger.info(f"Champion alias set successfully for {model_name}:champion")
+
+    except Exception as e:
+        logger.error(f"Error registering model: {str(e)}")
+        raise
 
     # Save metrics to metrics.json
     metrics = {

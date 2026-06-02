@@ -5,11 +5,19 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# TODO: Pull the MLflow model with @champion alias and bake it into the image.
-# Students should implement this using:
-#   ARG MLFLOW_TRACKING_URI=http://mlflow:5000
-#   RUN mlflow models download -m models:/champion@champion -d ./models --no-directory
-# Then load the model in app/main.py using mlflow.sklearn.load_model()
+# Configure MLflow tracking URI
+# Students can override this when building the image:
+#   docker build --build-arg MLFLOW_TRACKING_URI=http://your-mlflow-server:5000 .
+ARG MLFLOW_TRACKING_URI=http://localhost:5000
+
+# Pull the MLflow model with @champion alias and bake it into the image
+# This requires either:
+# 1. MLflow server running at the MLFLOW_TRACKING_URI during build time, OR
+# 2. Override MLFLOW_TRACKING_URI with a running MLflow server when building:
+#    docker build --build-arg MLFLOW_TRACKING_URI=http://mlflow-host:5000 .
+#
+# The command downloads the model registered as "champion" with the @champion alias
+RUN mlflow models download -m "models:/champion@champion" -d ./models --no-directory
 
 COPY ./app ./app
 

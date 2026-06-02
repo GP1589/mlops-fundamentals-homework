@@ -16,11 +16,16 @@ def train(data_path: str, params: dict):
     """
     Train multiple genre classification models and log them to MLflow.
 
+    **IMPORTANT: This is an intentionally incomplete skeleton for students to implement.**
+    Students are expected to complete the TODO sections below to build a complete
+    machine learning training pipeline with proper feature engineering, preprocessing,
+    model training, and MLflow logging.
+
     Args:
         data_path: Path to training CSV file (from data pipeline)
         params: Dictionary with hyperparameters from params.yaml
 
-    TODO:
+    Implementation Steps:
         1. Load the training data from data_path
         2. Separate features (X) from target (y)
            - Target: 'genre' column (10 classes)
@@ -40,19 +45,68 @@ def train(data_path: str, params: dict):
     logger.info(f"Loading training data from {data_path}")
     df = pd.read_csv(data_path)
 
+    # FEATURE SELECTION:
+    # Students should select the 12 audio features from the Kaggle dataset.
+    # Drop all metadata and non-audio columns:
+    #   - id, name, album_name, artists, lyrics (metadata)
+    #   - popularity, total_artist_followers, avg_artist_popularity (popularity metrics)
+    #   - artist_ids, niche_genres (additional metadata)
+    # Keep only the 12 audio features for the model.
     # Target is 'genre', features are audio features
     X = df.drop(["genre", "year"], axis=1, errors='ignore')
     y = df["genre"]
 
     logger.info(f"Features shape: {X.shape}, Target shape: {y.shape}")
 
+    # ENCODING:
+    # Use LabelEncoder to encode genre labels numerically.
+    # The dataset has 10 distinct genre classes that need to be converted to integers (0-9).
+    # This is required for sklearn models which expect numeric target values.
     # TODO: Encode genre labels (use LabelEncoder from sklearn)
+
+    # SCALING:
+    # Use StandardScaler for LogisticRegression to standardize features (zero mean, unit variance).
+    # XGBoost handles feature scaling internally, so do NOT scale features when using XGBoost.
+    # This means you may need different scaling strategies per model type:
+    # - For LogisticRegression: scale the features before training
+    # - For XGBoost: use original (unscaled) features
     # TODO: Scale features using StandardScaler
 
     # Get hyperparameters
     train_params = params.get("train", {})
 
     logger.info(f"Training {len(train_params)} model types...")
+
+    # MODEL TRAINING LOOP STRUCTURE:
+    # The model loop should iterate through each model configuration in params['train'].
+    # Each model type (logistic_regression, xgboost) has its own hyperparameters and
+    # requires different preprocessing. The general structure should follow this pseudocode:
+    #
+    # for model_name, model_params in train_params.items():
+    #     # Determine which model class and features to use
+    #     if model_name == 'logistic_regression':
+    #         model = LogisticRegression(**model_params)
+    #         X_to_use = X_scaled  # Use scaled features
+    #     elif model_name == 'xgboost':
+    #         model = xgb.XGBClassifier(**model_params)
+    #         X_to_use = X  # Use original features (XGBoost handles scaling)
+    #
+    #     # Start MLflow run to track this model
+    #     with mlflow.start_run(run_name=model_name):
+    #         # Log all hyperparameters from the config
+    #         mlflow.log_params(model_params)
+    #
+    #         # Train the model
+    #         model.fit(X_to_use, y_encoded)
+    #
+    #         # Evaluate on training data and log metrics
+    #         y_pred = model.predict(X_to_use)
+    #         accuracy = calculate_accuracy(y, y_pred)
+    #         mlflow.log_metric("accuracy", accuracy)
+    #
+    #         # Save the trained model to MLflow
+    #         mlflow.sklearn.log_model(model, artifact_path="model")
+    #         # OR for XGBoost: mlflow.xgboost.log_model(model, artifact_path="model")
 
     # TODO: Loop through each model in train_params and:
     #  1. Create appropriate model instance based on model_name:
