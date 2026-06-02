@@ -1,0 +1,9 @@
+data:
+  source_url: "https://example.com/spotify_data.csv" # TODO: Update with real source
+
+train:
+  logistic_regression:
+    C: [0.1, 1.0, 10.0]
+  xgboost:
+    max_depth: [3, 5, 7]
+    learning_rate: [0.01, 0.1]

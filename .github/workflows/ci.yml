@@ -1,0 +1,30 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: |
+          pip install flake8 pytest
+          # TODO: Install project specific requirements
+          
+      - name: Run Linter
+        run: flake8 .
+        
+      - name: Run Tests
+        run: |
+          pytest data_pipeline/tests
+          pytest model_serving/tests

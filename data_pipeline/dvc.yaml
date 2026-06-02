@@ -1,0 +1,16 @@
+stages:
+  download:
+    cmd: python src/download.py --source_url ${data.source_url} --output_path data/raw.csv
+    # TODO: add deps and outs
+
+  process:
+    cmd: python src/process.py --input_path data/raw.csv --train_output data/train.csv --prod_output data/prod_sim.csv
+    # TODO: add deps and outs
+
+  train:
+    cmd: python src/train.py --data_path data/train.csv --params_path params.yaml
+    # TODO: add deps, params, and metrics/outs
+
+  evaluate:
+    cmd: python src/evaluate.py
+    # TODO: add deps
