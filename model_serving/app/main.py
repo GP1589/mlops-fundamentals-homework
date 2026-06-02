@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import json
 import logging
@@ -11,25 +11,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# TODO: Define the SpotifyFeatures Pydantic model.
+#
+# Include the audio feature fields from the Kaggle dataset, with the correct
+# Python types. The field names must match the column names exactly
+# (the tests send a payload with these exact keys).
+#
+# Example fields and types:
+#   danceability (float), energy (float), key (int), loudness (float),
+#   mode (int), speechiness (float), acousticness (float),
+#   instrumentalness (float), liveness (float), valence (float),
+#   tempo (float), duration_ms (int)
 class SpotifyFeatures(BaseModel):
-    """
-    Spotify audio features for genre classification.
-
-    Based on the 550k Spotify Songs dataset from Kaggle.
-    All values are normalized by Spotify to ranges [0, 1] except where noted.
-    """
-    danceability: float  # 0-1: How suitable for dancing
-    energy: float  # 0-1: Intensity and activity
-    key: int  # 0-11: Pitch class (C to B)
-    loudness: float  # dB: Overall loudness
-    mode: int  # 0-1: Major (1) or Minor (0)
-    speechiness: float  # 0-1: Presence of spoken words
-    acousticness: float  # 0-1: How acoustic
-    instrumentalness: float  # 0-1: Likelihood of instrumental
-    liveness: float  # 0-1: Presence of audience
-    valence: float  # 0-1: Musical positiveness
-    tempo: float  # BPM: Beats per minute
-    duration_ms: int  # Milliseconds: Song length
+    pass
 
 
 class PredictionResponse(BaseModel):
@@ -37,33 +31,38 @@ class PredictionResponse(BaseModel):
     confidence: float = 0.0
 
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Log all incoming /predict requests to logs/api_requests.jsonl.
+
+    Logging here (middleware) rather than inside the endpoint keeps
+    observability separate from business logic — easier to disable, test,
+    and extend (rate limiting, metrics) without touching endpoint code.
+
+    TODO:
+      1. Only log POST requests to "/predict"
+      2. Read the body: body_bytes = await request.body()
+      3. Parse as JSON, add a "timestamp" field (datetime.utcnow().isoformat())
+      4. Append a JSON line to logs/api_requests.jsonl (create logs/ if needed)
+      5. Reconstruct the request so the endpoint can still read it:
+             async def receive():
+                 return {"type": "http.request", "body": body_bytes}
+             request = Request(request.scope, receive)
+      6. Call response = await call_next(request) and return it
+    """
+    response = await call_next(request)
+    return response
+
+
+# TODO: Implement the GET /health endpoint.
+#   It should return {"status": "healthy"} with a 200 status code.
+#   This is used by load balancers and CI checks to verify the API is up.
 
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(features: SpotifyFeatures) -> PredictionResponse:
-    """
-    Predict Spotify track genre from audio features.
-
-    Logs incoming requests to logs/api_requests.jsonl for drift monitoring.
-    """
-    logs_dir = Path("logs")
-    logs_dir.mkdir(exist_ok=True)
-
-    request_log_path = logs_dir / "api_requests.jsonl"
-
-    request_data = {
-        **features.model_dump(),
-        "timestamp": __import__("datetime").datetime.utcnow().isoformat()
-    }
-
-    with open(request_log_path, "a") as f:
-        f.write(json.dumps(request_data) + "\n")
-
-    logger.info(f"Logged prediction request: {request_data}")
-
+    """Predict Spotify track genre from audio features."""
     try:
         prediction = predict_genre(features)
         return prediction
@@ -75,44 +74,38 @@ def predict(features: SpotifyFeatures) -> PredictionResponse:
 def predict_genre(features: SpotifyFeatures) -> PredictionResponse:
     """
     **IMPORTANT: This is an intentionally incomplete skeleton for students to implement.**
-    
+
     Students must:
     1. Load the MLflow model registered with the @champion alias
        - The model is baked into the Docker container at ./models/
-       - Use: mlflow.sklearn.load_model("models:/champion@champion/production")
+       - Use: mlflow.sklearn.load_model("./models")
     2. Convert SpotifyFeatures to the format expected by the model
        - Extract feature values in the correct order (order matters for sklearn models)
-       - Must match the 12 audio features used during training
-    3. Perform inference on the 12 audio features
+       - Must match the audio features used during training
+    3. Perform inference on the audio features
     4. Map the predicted class index back to genre name
     5. Return a PredictionResponse with the genre and confidence score
 
     Example implementation structure:
         import mlflow
-        from sklearn.preprocessing import LabelEncoder
-        
-        # Load model once (consider caching for performance)
-        model = mlflow.sklearn.load_model("models:/champion@champion/production")
-        
-        # Extract features in correct order matching training data
+
+        model = mlflow.sklearn.load_model("./models")
+
         feature_names = [
             'danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',
             'acousticness', 'instrumentalness', 'liveness', 'valence', 'tempo', 'duration_ms'
         ]
         feature_vector = [getattr(features, name) for name in feature_names]
-        
-        # Make prediction
+
         prediction = model.predict([feature_vector])
-        
-        # Get confidence (probability of predicted class)
-        # For probability estimates: model.predict_proba([feature_vector])
-        
-        # Map class index to genre name
-        genres = ['Rock', 'Pop', 'Electronic', 'Folk', 'Country', 'Hip-Hop', 'R&B', 'Jazz', 'Blues', 'Classical']
-        predicted_genre = genres[prediction[0]]
-        
+        probabilities = model.predict_proba([feature_vector])
+        confidence = float(probabilities[0].max())
+
+        # Map numeric class index back to genre label using the LabelEncoder
+        # you saved during training, or hardcode the genre list if consistent.
+
         return PredictionResponse(genre=predicted_genre, confidence=confidence)
-    
-    For now, returns a placeholder response so API tests pass:
+
+    For now, returns a placeholder so API tests pass:
     """
     return PredictionResponse(genre="Pop", confidence=0.85)

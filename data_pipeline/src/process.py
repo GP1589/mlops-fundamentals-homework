@@ -1,4 +1,5 @@
 import argparse
+import os
 import pandas as pd
 import logging
 
@@ -15,48 +16,36 @@ def process_data(
     """
     Load and split the Spotify dataset temporally by release year.
 
-    **Responsibility**: Load raw CSV, filter/select columns, and split into train/prod.
-    This creates a temporal train/test split to simulate real-world data drift.
+    Creates a temporal train/prod split that simulates real-world data drift:
+    - train (year <= threshold): pre-streaming era (CD/iTunes)
+    - prod  (year >  threshold): streaming era (Spotify/Apple Music)
 
-    **Note**: 2010 marks the streaming era shift in music, serving as the boundary
-    between training data (pre-streaming era) and production data (streaming era).
-    This aligns with Spotify's launch and the transition to streaming-dominant music consumption.
+    The 2010 boundary marks Spotify's launch. Audio feature distributions shift
+    significantly across this boundary — this is intentional, it's the drift
+    students will detect in analyze_drift.py.
 
     Args:
-        input_path: Path to raw dataset CSV (from download.py)
-        train_output: Path to save training data (year <= threshold)
-        prod_output: Path to save production data (year > threshold)
-        year_threshold: Year to split on (default 2010, marks streaming era shift)
-
-    TODO:
-        1. Load CSV with headers
-        2. Select relevant columns:
-           - Target: genre
-           - Features: danceability, energy, key, loudness, mode, speechiness,
-                       acousticness, instrumentalness, liveness, valence, tempo, duration_ms
-           - Temporal: year
-        3. Split temporally: train (year <= threshold), prod_sim (year > threshold)
-        4. Save both subsets as CSV
+        input_path: Path to raw dataset CSV (from load.py)
+        train_output: Path to save training split (year <= year_threshold)
+        prod_output: Path to save production split (year > year_threshold)
+        year_threshold: Year boundary (default 2010)
     """
     logger.info(f"Loading data from {input_path}...")
     df = pd.read_csv(input_path)
 
     logger.info(f"Raw dataset shape: {df.shape}")
-    logger.info(f"Columns: {list(df.columns)}")
     logger.info(f"Year range: {df['year'].min()}-{df['year'].max()}")
 
-    # Temporal split
-    train_df = df[df["year"] <= year_threshold]
-    prod_df = df[df["year"] > year_threshold]
+    # TODO: Split df into two DataFrames using boolean indexing on the 'year' column:
+    #   train_df — rows where year <= year_threshold
+    #   prod_df  — rows where year >  year_threshold
+    #
+    # Log the size of each split so you can sanity-check the ratio.
 
-    logger.info(f"Training set (year <= {year_threshold}): {len(train_df)} records")
-    logger.info(f"Production set (year > {year_threshold}): {len(prod_df)} records")
-
-    train_df.to_csv(train_output, index=False)
-    prod_df.to_csv(prod_output, index=False)
-
-    logger.info(f"Saved training data to {train_output}")
-    logger.info(f"Saved production data to {prod_output}")
+    # TODO: Save both splits to CSV (index=False).
+    #   Create parent directories first with os.makedirs(..., exist_ok=True).
+    #   train_df → train_output
+    #   prod_df  → prod_output
 
 
 if __name__ == "__main__":

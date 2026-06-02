@@ -1,6 +1,7 @@
 import mlflow
 import json
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -10,42 +11,26 @@ def evaluate_and_register(train_data_path: str = "data/train.csv"):
     """
     Find the best performing model and register it with @champion alias.
 
-    TODO:
-        1. Connect to MLflow (assumes server is running at MLFLOW_TRACKING_URI)
-        2. Query all runs from the current experiment
-        3. Find the run with the highest accuracy metric
-        4. Register the best model in MLflow Model Registry
-        5. Assign the alias '@champion' to this registered model version
-        6. Save evaluation metrics to metrics.json
+    The scaffolding below handles connecting to MLflow and finding the best run.
+    Your job is to register that model in the MLflow Model Registry and assign
+    the 'champion' alias so the Dockerfile can pull it by name.
 
-    Example code for registering model:
-        # model_uri = f"runs:/{best_run.info.run_id}/model"
-        # registered_model = client.create_model_version(
-        #     name=model_name,
-        #     source=model_uri,
-        #     run_id=best_run.info.run_id
-        # )
-        # client.set_registered_model_alias(
-        #     name=model_name,
-        #     alias="champion",
-        #     version=registered_model.version
-        # )
+    MLflow Model Registry API:
+        client.create_model_version(name, source, run_id)
+            -> returns a ModelVersion object with a .version attribute
+        client.set_registered_model_alias(name, alias, version)
+            -> assigns a named alias to a specific version
     """
     logger.info("Evaluating models and registering the best one...")
 
-    # Set MLflow tracking URI (from environment or default)
-    import os
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
     mlflow.set_tracking_uri(tracking_uri)
 
     client = mlflow.tracking.MlflowClient()
 
-    # Get the current experiment (assumes tracking in default experiment)
     experiment = client.get_experiment_by_name(None) or client.get_experiment("0")
-
     logger.info(f"Searching runs in experiment: {experiment.name}")
 
-    # Find the best run by accuracy
     runs = client.search_runs(
         experiment_ids=[experiment.experiment_id],
         order_by=["metrics.accuracy DESC"],
@@ -58,39 +43,15 @@ def evaluate_and_register(train_data_path: str = "data/train.csv"):
 
     best_run = runs[0]
     best_accuracy = best_run.data.metrics.get("accuracy", 0)
-
-    logger.info(f"Best run: {best_run.info.run_id}")
-    logger.info(f"Best accuracy: {best_accuracy:.4f}")
-    logger.info(f"Model type: {best_run.data.params.get('model', 'unknown')}")
-
-    # Register the model
     model_uri = f"runs:/{best_run.info.run_id}/model"
     model_name = "spotify-genre-classifier"
 
-    try:
-        # Register the model in MLflow Model Registry
-        logger.info(f"Registering model '{model_name}' from run {best_run.info.run_id}...")
-        registered_model = client.create_model_version(
-            name=model_name,
-            source=model_uri,
-            run_id=best_run.info.run_id
-        )
-        logger.info(f"Model registered successfully. Version: {registered_model.version}")
+    logger.info(f"Best run: {best_run.info.run_id} (accuracy={best_accuracy:.4f})")
 
-        # Assign the @champion alias to this model version
-        logger.info(f"Setting 'champion' alias for version {registered_model.version}...")
-        client.set_registered_model_alias(
-            name=model_name,
-            alias="champion",
-            version=registered_model.version
-        )
-        logger.info(f"Champion alias set successfully for {model_name}:champion")
+    # TODO: Register the model and assign the 'champion' alias
+    #   1. Call client.create_model_version() to register model_uri under model_name
+    #   2. Call client.set_registered_model_alias() to tag that version as "champion"
 
-    except Exception as e:
-        logger.error(f"Error registering model: {str(e)}")
-        raise
-
-    # Save metrics to metrics.json
     metrics = {
         "best_run_id": best_run.info.run_id,
         "best_accuracy": best_accuracy,

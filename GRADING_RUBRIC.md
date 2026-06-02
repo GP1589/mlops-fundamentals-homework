@@ -6,14 +6,14 @@
 
 ## 1. Data Pipeline (6 points)
 
-### 1.1 Download Script (1 point)
-- **0.5 pts**: Loads CSV from `source_path` without errors
-- **0.5 pts**: Outputs `data/raw.csv` with correct column count
+### 1.1 Dataset Integrity (1 point)
+- **0.5 pts**: `songs.csv` MD5 matches expected hash (`dvc status songs.csv.dvc` is clean)
+- **0.5 pts**: `dvc repro` produces `data/raw.csv` with correct column count
 
 ### 1.2 Process Script (1.5 points)
-- **0.5 pts**: Correctly splits data into train (year ≤ 2010) and prod_sim (year > 2010)
-- **0.5 pts**: Outputs both `data/train.csv` and `data/prod_sim.csv`
-- **0.5 pts**: Preserves all audio features and genre column
+- **0.5 pts**: Temporal split is correct — year ≤ 2010 → train, year > 2010 → prod_sim (exact boundary matters)
+- **0.5 pts**: Both `data/train.csv` and `data/prod_sim.csv` are produced
+- **0.5 pts**: Audio features and the `genre` column are present in both outputs
 
 ### 1.3 Train Script (2 points)
 - **0.5 pts**: Loads training data and target (`genre`) correctly
@@ -38,7 +38,7 @@
 - **1 pt**: Request logging implemented (writes to `logs/api_requests.jsonl`)
 
 ### 2.2 Pydantic Models (1 point)
-- **1 pt**: `SpotifyFeatures` has all 12 required audio features with correct types
+- **1 pt**: `SpotifyFeatures` includes the audio feature fields with correct types
 
 ### 2.3 Dockerfile (1 point)
 - **0.5 pts**: Dockerfile builds without errors
@@ -48,10 +48,15 @@
 
 ## 3. Drift Monitoring (3 points)
 
-### 3.1 Analyze Drift Script (3 points)
-- **1 pt**: Loads training data and API logs correctly
-- **1 pt**: Calculates Kolmogorov-Smirnov test for each feature
-- **1 pt**: Outputs `drift_report.json` with per-feature analysis and overall status
+### 3.1 Batch Drift Analysis (1.5 points)
+- **0.5 pts**: Loads `data/train.csv` and `data/prod_sim.csv` correctly in `--mode batch`
+- **0.5 pts**: Kolmogorov-Smirnov test runs for each audio feature (uses `scipy.stats.ks_2samp`)
+- **0.5 pts**: `drift_report.json` contains per-feature `ks_statistic`, `p_value`, `drift_detected`, and an overall `status`
+
+### 3.2 Online Drift Analysis (1.5 points)
+- **0.5 pts**: Loads `data/train.csv` and `logs/api_requests.jsonl` correctly in `--mode online`
+- **0.5 pts**: Parses JSONL line-by-line and builds a DataFrame of production features
+- **0.5 pts**: Reuses the same KS analysis logic as batch mode (`run_ks_analysis`)
 
 ---
 

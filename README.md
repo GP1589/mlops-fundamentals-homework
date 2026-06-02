@@ -12,8 +12,8 @@ In this homework, you will implement a complete, production-ready MLOps pipeline
 - **Download**: https://www.kaggle.com/datasets/serkantysz/550k-spotify-songs-audio-lyrics-and-genres
 - **Note**: Requires Kaggle API authentication (see Setup section)
 
-### Audio Features (12 total)
-Your model should use these **12 audio features** as inputs:
+### Audio Features
+Your model should use these audio features as inputs:
 - `danceability`, `energy`, `key`, `loudness`, `mode`, `speechiness`
 - `acousticness`, `instrumentalness`, `liveness`, `valence`, `tempo`, `duration_ms`
 
@@ -28,7 +28,7 @@ The task is to **classify music genre** while detecting **data drift**:
 - **Training Data** (year ≤ 2010): CD/iTunes era — longer songs, more acoustic, higher emotional valence
 - **Production Data** (year > 2010): Spotify/streaming era — shorter, punchier, more electronic, heavily compressed
 - **Why 2010?** This marks the launch of Spotify and shift to streaming-dominant music consumption
-- **Data Drift**: All 12 audio features show statistically significant drift across this boundary, simulating real-world model degradation
+- **Data Drift**: Audio features show statistically significant drift across this boundary, simulating real-world model degradation
 
 ## Project Structure (Monorepo)
 
@@ -36,9 +36,9 @@ The task is to **classify music genre** while detecting **data drift**:
 Homework_E2E/
 ├── .github/workflows/       # CI/CD pipelines
 ├── data_pipeline/           # DVC orchestrated ML training pipeline
-│   ├── src/                 # Scripts: download, process, train, evaluate
+│   ├── src/                 # Scripts: load, process, train, evaluate
 │   ├── tests/               # Unit tests for the pipeline steps
-│   ├── dvc.yaml             # Pipeline definition (download → process → train → evaluate)
+│   ├── dvc.yaml             # Pipeline definition (load → process → train → evaluate)
 │   ├── params.yaml          # Hyperparameters and data config
 │   └── requirements.txt      # Python dependencies
 ├── model_serving/           # FastAPI application and Docker deployment
@@ -105,31 +105,95 @@ source .env
 mlflow server --host 0.0.0.0 --port 5000
 ```
 
+## Implementation Checklist
+
+Every item below maps to a specific TODO in the code. Complete them in order — each stage feeds the next.
+
+### Stage 1 — Data Pipeline (`data_pipeline/`)
+
+**`src/process.py` → `process_data()`**
+- [ ] Split `df` into `train_df` (year ≤ 2010) and `prod_df` (year > 2010)
+- [ ] Save both to CSV using `to_csv(..., index=False)`
+
+**`src/train.py` → `train()`**
+- [ ] Encode `genre` labels with `LabelEncoder`
+- [ ] Scale features with `StandardScaler` (LogisticRegression only — XGBoost skips this)
+- [ ] Loop through `params['train']`, for each model:
+  - Start an MLflow run (`mlflow.start_run(run_name=...)`)
+  - Log hyperparameters (`mlflow.log_params(...)`)
+  - Fit the model
+  - Log accuracy metric (`mlflow.log_metric("accuracy", ...)`)
+  - Save the model artifact (`mlflow.sklearn.log_model` or `mlflow.xgboost.log_model`)
+
+**`src/evaluate.py` → `evaluate_and_register()`**
+- [ ] Call `client.create_model_version(name, source, run_id)` to register the best run
+- [ ] Call `client.set_registered_model_alias(name, "champion", version)` to tag it
+
+---
+
+### Stage 2 — Model Serving (`model_serving/`)
+
+**`app/main.py` → `SpotifyFeatures`**
+- [ ] Add the audio feature fields with correct types to the Pydantic model
+
+**`app/main.py` → `GET /health`**
+- [ ] Implement the health endpoint returning `{"status": "healthy"}`
+
+**`app/main.py` → `log_requests` middleware**
+- [ ] Read the request body and parse as JSON
+- [ ] Append a JSON line (with timestamp) to `logs/api_requests.jsonl`
+- [ ] Reconstruct the request before passing to `call_next`
+
+**`app/main.py` → `predict_genre()`**
+- [ ] Load the MLflow model from `./models/` (baked in at Docker build time)
+- [ ] Extract the feature values from the `SpotifyFeatures` object
+- [ ] Run inference and return a `PredictionResponse` with genre and confidence
+
+**`Dockerfile`**
+- [ ] Add `ARG MLFLOW_TRACKING_URI` and the `RUN mlflow models download` step to pull `@champion` into `./models/`
+
+---
+
+### Stage 3 — Drift Monitoring (`drift_monitoring/`)
+
+**`src/analyze_drift.py` → `run_ks_analysis()`** *(shared by both modes)*
+- [ ] For each feature in `features_to_test`, run `scipy.stats.ks_2samp(train_values, prod_values)`
+- [ ] Flag drift if `p_value < 0.05`
+- [ ] Populate `drift_results["details"][feature]` with `ks_statistic`, `p_value`, `drift_detected`, `train_mean`, `prod_mean`
+- [ ] Append drifted feature names to `drift_results["drifted_features"]` and update `features_with_drift`
+
+**Batch mode** (`--mode batch`): called by `analyze_batch_drift()` — loads `data/train.csv` and `data/prod_sim.csv`
+
+**Online mode** (`--mode online`): called by `analyze_online_drift()` — loads `data/train.csv` and `logs/api_requests.jsonl`
+
+---
+
 ## Your Tasks
 
 ### 1. Data Pipeline & Orchestration (DVC + MLflow)
 Located in `data_pipeline/`.
 
-#### 1.1 Download (`src/download.py`)
-- **Status**: Skeleton provided
-- **TODO**: Load the Kaggle CSV file and prepare raw data
-- **Input**: `params.yaml` with `data.source_path` pointing to `songs.csv`
-- **Output**: `data/raw.csv` (all columns from Kaggle dataset)
-- **Notes**: 
-  - Ensure the downloaded CSV is saved as `songs.csv` in the `data_pipeline/` directory
-  - Keep all columns from the Kaggle dataset
-  - The function should not filter columns — that happens in `process.py`
-- **Test**: `pytest data_pipeline/tests/test_process.py`
+#### 1.1 Load (`src/load.py`)
+- **Status**: Provided — no changes needed
+- **Input**: `songs.csv` in the `data_pipeline/` directory (downloaded manually from Kaggle)
+- **Output**: `data/raw.csv` (all columns, no filtering)
+- **Hash verification**: After placing your `songs.csv`, verify you have the correct file:
+  ```bash
+  cd data_pipeline
+  dvc status songs.csv.dvc   # Should show: songs.csv: not in cache
+                              # Then run: dvc repro
+                              # After repro, dvc.lock will record the hash
+  ```
+  If the hash in `dvc.lock` matches `songs.csv.dvc`, you have the right file.
 
 #### 1.2 Process (`src/process.py`)
-- **Status**: Skeleton provided with implementation guidance
-- **TODO**: Complete the function
+- **Status**: Skeleton provided — implement the split and save logic (see TODOs in `process_data()`)
 - **Input**: Raw dataset, `year_threshold` from `params.yaml` (**set to 2010** — not 2005)
 - **Output**: 
   - `data/train.csv` (year ≤ 2010) — Pre-streaming era data for model training
   - `data/prod_sim.csv` (year > 2010) — Streaming era data for drift detection
 - **Key**: This is a **temporal split**, not random. You will detect drift: pre-2010 music (CD/iTunes) vs post-2010 (Spotify) have significantly different audio feature distributions.
-  - **Important**: `year_threshold = 2010` marks the streaming era shift. This boundary is where statistically significant drift occurs across all 12 audio features.
+  - **Important**: `year_threshold = 2010` marks the streaming era shift. This boundary is where statistically significant drift occurs.
 - **Columns**: Include all audio features (danceability, energy, key, etc.), genre (target), and year (for reference)
 
 #### 1.3 Train (`src/train.py`)
@@ -138,7 +202,7 @@ Located in `data_pipeline/`.
 - **Requirements**:
   - Load training data from `data/train.csv`
   - **Target**: `genre` column (10-class classification)
-  - **Features**: All audio features (danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_ms)
+  - **Features**: Audio features (danceability, energy, key, loudness, mode, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_ms)
   - Load hyperparameters from `params.yaml`
   - Log to MLflow:
     - Parameters (e.g., `C`, `max_depth`, `learning_rate`)
@@ -176,7 +240,7 @@ Located in `model_serving/`.
   - `POST /predict` → Accepts audio features (SpotifyFeatures), returns predicted genre
 - **Requirements**:
   - Load the MLflow model registered with `@champion` alias
-  - Perform inference on the 12 audio features
+  - Perform inference on the audio features
   - Return the predicted genre (one of: Rock, Pop, Electronic, Folk, Country, Hip-Hop, R&B, Jazz, Blues, Classical)
   - Request logging is **already implemented** (logs to `logs/api_requests.jsonl`)
   - Handle errors gracefully with HTTP 500 if prediction fails
@@ -191,17 +255,17 @@ Located in `model_serving/`.
   ```
 
 #### 2.3 Dockerfile (`Dockerfile`)
-- **Status**: Implementation provided with MLflow model pulling
-- **Key features**:
-  - Accepts `MLFLOW_TRACKING_URI` as a build argument (default: `http://localhost:5000`)
-  - Downloads the `@champion` aliased model from MLflow during build
-  - Requires MLflow server to be running at build time
-- **Local development**: Default `http://localhost:5000` works if you run MLflow locally
+- **Status**: Skeleton provided
+- **TODO**: Add an `ARG` and `RUN` step to download the `@champion` model from MLflow during build
+- **Requirements**:
+  - Accept `MLFLOW_TRACKING_URI` as a build argument (default: `http://localhost:5000`)
+  - Use `mlflow models download` to pull the `@champion` model into `./models/` at build time
+  - The container should be self-contained (no live MLflow server needed at runtime)
+- **Hint**: See the TODO comment inside `Dockerfile` for the exact command syntax
 - **Overriding MLflow URI**: When building in different environments:
   ```bash
   docker build --build-arg MLFLOW_TRACKING_URI=http://mlflow-host:5000 .
   ```
-- **Note**: The model is saved to `./models/` directory in the container
 
 ##### MLflow Model Loading
 
@@ -220,21 +284,47 @@ This loads the production version of the champion model from MLflow.
 
 If the model loading fails with "Connection refused" in the Docker container, verify that MLflow is accessible from the container's network context.
 
-### 3. Drift Monitoring (Batch)
+### 3. Drift Monitoring
 Located in `drift_monitoring/`.
 
-#### 3.1 Drift Analysis (`src/analyze_drift.py`)
-- **Status**: Skeleton provided
-- **TODO**: Compare training data distribution vs production logs
+The script supports two modes — run both to get the full picture.
+
+#### 3.1 Batch Drift (`src/analyze_drift.py --mode batch`)
+- **Status**: Skeleton provided — implement `run_ks_analysis()`
+- **What it does**: Compares `data/train.csv` vs `data/prod_sim.csv` (the two temporal splits from `process.py`)
 - **Input**:
-  - Training data: `data_pipeline/data/train.csv` (from DVC)
-  - Production logs: `logs/api_requests.jsonl` (from API)
-- **Output**: A drift report or alert
-- **Suggested approach**:
-  - Use statistical tests (Kolmogorov-Smirnov, Chi-square)
-  - Compare feature distributions
-  - Flag if drift exceeds a threshold
-  - Save results to `drift_report.json`
+  - `--train_data data_pipeline/data/train.csv`
+  - `--prod_data data_pipeline/data/prod_sim.csv`
+  - `--output batch_drift_report.json`
+- **Expected result**: Significant drift detected — pre-2010 (CD/iTunes era) vs post-2010 (Spotify era) have very different audio distributions
+- **TODO**: Implement the KS test loop in `run_ks_analysis()` — this function is shared with online mode, so you only write it once
+
+```bash
+cd drift_monitoring
+python src/analyze_drift.py \
+  --mode batch \
+  --train_data ../data_pipeline/data/train.csv \
+  --prod_data ../data_pipeline/data/prod_sim.csv \
+  --output batch_drift_report.json
+```
+
+#### 3.2 Online Drift (`src/analyze_drift.py --mode online`)
+- **Status**: Skeleton provided — reuses `run_ks_analysis()` from batch mode
+- **What it does**: Compares `data/train.csv` vs live API request logs (`logs/api_requests.jsonl`)
+- **Input**:
+  - `--train_data data_pipeline/data/train.csv`
+  - `--api_logs model_serving/logs/api_requests.jsonl`
+  - `--output online_drift_report.json`
+- **Prerequisite**: The API must be running and have received prediction requests (middleware logs them)
+
+```bash
+cd drift_monitoring
+python src/analyze_drift.py \
+  --mode online \
+  --train_data ../data_pipeline/data/train.csv \
+  --api_logs ../model_serving/logs/api_requests.jsonl \
+  --output online_drift_report.json
+```
 
 ### 4. CI/CD (GitHub Actions)
 Located in `.github/workflows/ci.yml`.
@@ -386,7 +476,7 @@ docker run -p 8000:8000 spotify-api:latest
 - **`flake8` errors**: Run `flake8 .` locally, fix style issues (whitespace, imports, line length)
 - **Process tests fail**: Ensure CSV is in correct path and `year` column exists
 - **MLflow runs not showing up**: Verify MLflow server is running with `mlflow server --host 0.0.0.0 --port 5000`
-- **API tests fail**: Check that `SpotifyFeatures` field names match test payload (12 audio features)
+- **API tests fail**: Check that `SpotifyFeatures` field names match test payload
 - **Dockerfile build fails**: Ensure `@champion` model download step uses correct MLflow URI
 
 ---
@@ -399,14 +489,14 @@ docker run -p 8000:8000 spotify-api:latest
    - **Pre-2010 (Training)**: CD/iTunes era — longer songs, more acoustic, higher emotional valence
    - **Post-2010 (Production)**: Spotify/Apple Music era — shorter, punchier, more electronic, heavily compressed
    
-   **All 12 features show statistically significant drift:**
+   **Audio features show statistically significant drift:**
    - 🔊 Loudness: +1.56 dB (loudness wars & compression)
    - 🎸 Acousticness: -5.75% (more synth, less acoustic)
    - 😔 Valence: -6.5% (moodier music)
    - ⚡ Energy: +4.3% (more intense production)
    - ⏱️ Duration: -8.4 sec (streaming optimization)
 
-2. **Audio Features**: The 12 Spotify audio features represent objective measurements of the audio:
+2. **Audio Features**: Spotify audio features represent objective measurements of the audio:
    - Danceability: How suitable for dancing (0-1)
    - Energy: Intensity and activity (0-1)
    - Key: Pitch class (0-11)

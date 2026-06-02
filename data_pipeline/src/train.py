@@ -29,7 +29,7 @@ def train(data_path: str, params: dict):
         1. Load the training data from data_path
         2. Separate features (X) from target (y)
            - Target: 'genre' column (10 classes)
-           - Features: audio features (12 total)
+           - Features: audio feature columns
            - Drop metadata columns (id, name, artist, year, popularity, etc.)
         3. Encode genre labels using LabelEncoder
         4. Scale features using StandardScaler
@@ -46,12 +46,10 @@ def train(data_path: str, params: dict):
     df = pd.read_csv(data_path)
 
     # FEATURE SELECTION:
-    # Students should select the 12 audio features from the Kaggle dataset.
+    # Students should select features from the Kaggle dataset.
     # Drop all metadata and non-audio columns:
-    #   - id, name, album_name, artists, lyrics (metadata)
-    #   - popularity, total_artist_followers, avg_artist_popularity (popularity metrics)
-    #   - artist_ids, niche_genres (additional metadata)
-    # Keep only the 12 audio features for the model.
+    # You can use the lyrics column if you want, but it requires additional text processing and may not be
+    # necessary for good performance.
     # Target is 'genre', features are audio features
     X = df.drop(["genre", "year"], axis=1, errors='ignore')
     y = df["genre"]

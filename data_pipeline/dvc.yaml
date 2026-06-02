@@ -1,8 +1,9 @@
 stages:
-  download:
-    cmd: python src/download.py --source_path ${data.source_path} --output_path data/raw.csv
+  load:
+    cmd: python src/load.py --source_path ${data.source_path} --output_path data/raw.csv
     deps:
-      - src/download.py
+      - src/load.py
+      - ${data.source_path}
     outs:
       - data/raw.csv:
           cache: false
