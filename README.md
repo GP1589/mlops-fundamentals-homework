@@ -4,6 +4,57 @@ Welcome to the final assignment for the MLOps Fundamentals and Practice course!
 
 In this homework, you will implement a complete, production-ready MLOps pipeline for music audio data. You will manage data versioning, orchestrate experiments, deploy an API, and monitor for data drift.
 
+---
+
+## How to Submit
+
+Follow these steps exactly — your grade depends on a passing CI run on your Pull Request.
+
+### Step 1 — Fork the repository
+
+1. Go to the course repository on GitHub.
+2. Click **Fork** (top-right corner) → **Create fork**.
+3. This creates a copy under your GitHub account (e.g., `your-username/mlops-fundamentals-homework`).
+
+### Step 2 — Clone your fork
+
+```bash
+git clone https://github.com/<your-username>/mlops-fundamentals-homework.git
+cd mlops-fundamentals-homework
+```
+
+> Replace `<your-username>` with your actual GitHub username.
+
+### Step 3 — Create a working branch
+
+```bash
+git checkout -b solution/<your-name>
+# Example: git checkout -b solution/maria-garcia
+```
+
+### Step 4 — Implement the tasks
+
+Complete all TODOs described in the [Implementation Checklist](#implementation-checklist) below. Commit your progress regularly:
+
+```bash
+git add .
+git commit -m "feat: implement data pipeline process step"
+git push origin solution/<your-name>
+```
+
+### Step 5 — Open a Pull Request
+
+1. Go to your fork on GitHub.
+2. Click **Compare & pull request** (GitHub will show this banner automatically after a push).
+3. Set the **base repository** to the course repo and **base branch** to `main`.
+4. Title your PR: `[Homework] <Your Full Name>` (e.g., `[Homework] Maria Garcia`).
+5. In the description, paste your completed [[GRADING_RUBRIC#Submission Checklist|Submission Checklist]].
+6. Click **Create pull request**.
+
+> **The CI pipeline runs automatically on every push to your PR.** A green checkmark means your tests and linter pass — this is worth 1 point. See [[GRADING_RUBRIC#4.3 GitHub Actions|§4.3 GitHub Actions]].
+
+---
+
 ## Dataset
 
 **550k Spotify Songs** from Kaggle:
@@ -19,7 +70,7 @@ Your model should use these audio features as inputs:
 
 **Target**: `genre` column (10 main categories: Rock, Pop, Electronic, Folk, Country, Hip-Hop, R&B, Jazz, Blues, Classical)
 
-**Other columns** (metadata — students can choose to include or ignore):
+**Other columns** (metadata — you can choose to include or ignore):
 - `id`, `name`, `album_name`, `artists`, `lyrics` (track metadata)
 - `popularity`, `total_artist_followers`, `avg_artist_popularity`, `artist_ids`, `niche_genres` (popularity metrics)
 
@@ -30,26 +81,30 @@ The task is to **classify music genre** while detecting **data drift**:
 - **Why 2010?** This marks the launch of Spotify and shift to streaming-dominant music consumption
 - **Data Drift**: Audio features show statistically significant drift across this boundary, simulating real-world model degradation
 
+---
+
 ## Project Structure (Monorepo)
 
 ```text
-Homework_E2E/
+mlops-fundamentals-homework/
 ├── .github/workflows/       # CI/CD pipelines
 ├── data_pipeline/           # DVC orchestrated ML training pipeline
 │   ├── src/                 # Scripts: load, process, train, evaluate
 │   ├── tests/               # Unit tests for the pipeline steps
 │   ├── dvc.yaml             # Pipeline definition (load → process → train → evaluate)
 │   ├── params.yaml          # Hyperparameters and data config
-│   └── requirements.txt      # Python dependencies
+│   └── requirements.txt     # Python dependencies
 ├── model_serving/           # FastAPI application and Docker deployment
 │   ├── app/                 # FastAPI code
 │   ├── tests/               # API integration tests
 │   ├── Dockerfile           # Container definition
-│   └── requirements.txt      # Python dependencies
+│   └── requirements.txt     # Python dependencies
 └── drift_monitoring/        # Scripts for offline batch drift detection
     ├── src/
     └── requirements.txt
 ```
+
+---
 
 ## Prerequisites
 
@@ -66,11 +121,8 @@ Before you start, ensure you have:
 
 ## Setup
 
-### 1. Clone & Install
+### 1. Install dependencies
 ```bash
-git clone <your-fork-url>
-cd Homework_E2E
-
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
@@ -90,7 +142,7 @@ pip install kaggle
 kaggle auth
 
 # Download the dataset (saves to Kaggle's default directory, usually ~/.cache/kaggle/datasets/)
-# Then ensure the CSV is placed in the data_pipeline/ directory
+# Then place the CSV at: data_pipeline/songs.csv
 ```
 
 ### 3. Configure Environment
@@ -105,11 +157,13 @@ source .env
 mlflow server --host 0.0.0.0 --port 5000
 ```
 
+---
+
 ## Implementation Checklist
 
-Every item below maps to a specific TODO in the code. Complete them in order — each stage feeds the next.
+Every item below maps to a specific TODO in the code. Complete them in order — each stage feeds the next. Point values reference the [[GRADING_RUBRIC]].
 
-### Stage 1 — Data Pipeline (`data_pipeline/`)
+### Stage 1 — Data Pipeline (`data_pipeline/`) · *6 pts* · [[GRADING_RUBRIC#1. Data Pipeline (6 points)|Rubric §1]]
 
 **`src/process.py` → `process_data()`**
 - [ ] Split `df` into `train_df` (year ≤ 2010) and `prod_df` (year > 2010)
@@ -131,7 +185,7 @@ Every item below maps to a specific TODO in the code. Complete them in order —
 
 ---
 
-### Stage 2 — Model Serving (`model_serving/`)
+### Stage 2 — Model Serving (`model_serving/`) · *5 pts* · [[GRADING_RUBRIC#2. Model Serving (5 points)|Rubric §2]]
 
 **`app/main.py` → `SpotifyFeatures`**
 - [ ] Add the audio feature fields with correct types to the Pydantic model
@@ -154,7 +208,7 @@ Every item below maps to a specific TODO in the code. Complete them in order —
 
 ---
 
-### Stage 3 — Drift Monitoring (`drift_monitoring/`)
+### Stage 3 — Drift Monitoring (`drift_monitoring/`) · *3 pts* · [[GRADING_RUBRIC#3. Drift Monitoring (3 points)|Rubric §3]]
 
 **`src/analyze_drift.py` → `run_ks_analysis()`** *(shared by both modes)*
 - [ ] For each feature in `features_to_test`, run `scipy.stats.ks_2samp(train_values, prod_values)`
@@ -170,7 +224,7 @@ Every item below maps to a specific TODO in the code. Complete them in order —
 
 ## Your Tasks
 
-### 1. Data Pipeline & Orchestration (DVC + MLflow)
+### 1. Data Pipeline & Orchestration (DVC + MLflow) · [[GRADING_RUBRIC#1. Data Pipeline (6 points)|Rubric §1]]
 Located in `data_pipeline/`.
 
 #### 1.1 Load (`src/load.py`)
@@ -184,12 +238,12 @@ Located in `data_pipeline/`.
                               # Then run: dvc repro
                               # After repro, dvc.lock will record the hash
   ```
-  If the hash in `dvc.lock` matches `songs.csv.dvc`, you have the right file.
+  If the hash in `dvc.lock` matches `songs.csv.dvc`, you have the right file. See [[GRADING_RUBRIC#1.1 Dataset Integrity (1 point)|§1.1 Dataset Integrity]].
 
 #### 1.2 Process (`src/process.py`)
 - **Status**: Skeleton provided — implement the split and save logic (see TODOs in `process_data()`)
 - **Input**: Raw dataset, `year_threshold` from `params.yaml` (**set to 2010** — not 2005)
-- **Output**: 
+- **Output**:
   - `data/train.csv` (year ≤ 2010) — Pre-streaming era data for model training
   - `data/prod_sim.csv` (year > 2010) — Streaming era data for drift detection
 - **Key**: This is a **temporal split**, not random. You will detect drift: pre-2010 music (CD/iTunes) vs post-2010 (Spotify) have significantly different audio feature distributions.
@@ -229,7 +283,7 @@ Located in `data_pipeline/`.
   dvc repro
   ```
 
-### 2. Model Serving (FastAPI + Docker)
+### 2. Model Serving (FastAPI + Docker) · [[GRADING_RUBRIC#2. Model Serving (5 points)|Rubric §2]]
 Located in `model_serving/`.
 
 #### 2.1 API Implementation (`app/main.py`)
@@ -269,22 +323,20 @@ Located in `model_serving/`.
 
 ##### MLflow Model Loading
 
-Students must implement the following in the `predict_genre()` function:
+Implement the following in the `predict_genre()` function:
 ```python
 mlflow.sklearn.load_model("models:/champion@champion/production")
 ```
-
-This loads the production version of the champion model from MLflow.
 
 **Important Networking Note**:
 - **Local development** (MLflow on your machine): Use `http://localhost:5000` as the tracking URI
 - **Docker internal network** (if using docker-compose): Use `http://mlflow:5000` for container-to-container communication
 - **Docker build time**: The build process runs on your machine, so use `http://localhost:5000` to download the model
-- **Docker runtime**: The container uses the URI passed at build time or set as an environment variable to access MLflow at prediction time
+- **Docker runtime**: The container uses the URI passed at build time or set as an environment variable
 
 If the model loading fails with "Connection refused" in the Docker container, verify that MLflow is accessible from the container's network context.
 
-### 3. Drift Monitoring
+### 3. Drift Monitoring · [[GRADING_RUBRIC#3. Drift Monitoring (3 points)|Rubric §3]]
 Located in `drift_monitoring/`.
 
 The script supports two modes — run both to get the full picture.
@@ -326,7 +378,7 @@ python src/analyze_drift.py \
   --output online_drift_report.json
 ```
 
-### 4. CI/CD (GitHub Actions)
+### 4. CI/CD (GitHub Actions) · [[GRADING_RUBRIC#4. Testing & CI/CD (4 points)|Rubric §4]]
 Located in `.github/workflows/ci.yml`.
 
 #### 4.1 Pipeline Configuration
@@ -337,21 +389,28 @@ Located in `.github/workflows/ci.yml`.
   3. `pytest model_serving/tests` — API tests
 - **Make sure it passes**: Green checkmark = pipeline works!
 
+---
+
 ## Submission Checklist
+
+Review the full point breakdown in [[GRADING_RUBRIC]] before submitting.
 
 - [ ] All functions in `src/*.py` are implemented (no `pass` statements)
 - [ ] `params.yaml` has realistic hyperparameters
-- [ ] `dvc repro` runs without errors in `data_pipeline/`
-- [ ] `pytest` passes for both `data_pipeline/tests/` and `model_serving/tests/`
-- [ ] `flake8 .` shows no major style violations
-- [ ] MLflow server has runs logged with metrics and models
-- [ ] Best model is registered with `@champion` alias
-- [ ] API returns predictions with valid payloads
-- [ ] API logs requests to `logs/api_requests.jsonl`
-- [ ] Dockerfile builds successfully
-- [ ] Drift monitoring script runs without errors
-- [ ] GitHub Actions workflow passes (green checkmark on PR)
-- [ ] All TODO comments in your code are addressed or justified
+- [ ] `dvc repro` runs without errors in `data_pipeline/` · [[GRADING_RUBRIC#1.5 DVC Pipeline (0.5 points)|§1.5]]
+- [ ] `pytest` passes for both `data_pipeline/tests/` and `model_serving/tests/` · [[GRADING_RUBRIC#4.1 Unit Tests (2 points)|§4.1]]
+- [ ] `flake8 .` shows no major style violations · [[GRADING_RUBRIC#4.2 Code Quality (1 point)|§4.2]]
+- [ ] MLflow server has runs logged with metrics and models · [[GRADING_RUBRIC#1.3 Train Script (2 points)|§1.3]]
+- [ ] Best model is registered with `@champion` alias · [[GRADING_RUBRIC#1.4 Evaluate Script (1 point)|§1.4]]
+- [ ] API returns predictions with valid payloads · [[GRADING_RUBRIC#2.1 API Implementation (3 points)|§2.1]]
+- [ ] API logs requests to `logs/api_requests.jsonl` · [[GRADING_RUBRIC#2.1 API Implementation (3 points)|§2.1]]
+- [ ] Dockerfile builds successfully · [[GRADING_RUBRIC#2.3 Dockerfile (1 point)|§2.3]]
+- [ ] Drift monitoring script runs without errors · [[GRADING_RUBRIC#3. Drift Monitoring (3 points)|§3]]
+- [ ] GitHub Actions workflow passes (green checkmark on PR) · [[GRADING_RUBRIC#4.3 GitHub Actions (1 point)|§4.3]]
+- [ ] All TODO comments in your code are addressed or justified · [[GRADING_RUBRIC#5.1 Code Quality (1 point)|§5.1]]
+- [ ] PR is open against the course repo `main` branch with title `[Homework] <Your Full Name>`
+
+---
 
 ## MLflow Networking: localhost vs Docker
 
@@ -429,7 +488,7 @@ mlflow models list
 
 **Column Names Don't Match**:
 ```bash
-# If CSV has different column names than expected, check the actual column names:
+# Check the actual column names in your CSV:
 python -c "import pandas as pd; df = pd.read_csv('data_pipeline/songs.csv'); print(df.columns.tolist())"
 
 # Common issues:
@@ -437,8 +496,7 @@ python -c "import pandas as pd; df = pd.read_csv('data_pipeline/songs.csv'); pri
 # - Target column named 'genre_name' or 'music_genre' instead of 'genre'
 # - Year column named 'release_year' or 'year_released' instead of 'year'
 
-# Solution:
-# Update process.py to rename columns to match expected names before splitting:
+# Solution: rename columns in process.py before splitting:
 # df = df.rename(columns={'danceability_score': 'danceability', ...})
 ```
 
@@ -471,14 +529,6 @@ docker build -t spotify-api:latest .
 docker run -p 8000:8000 spotify-api:latest
 ```
 
-## Quick Troubleshooting
-
-- **`flake8` errors**: Run `flake8 .` locally, fix style issues (whitespace, imports, line length)
-- **Process tests fail**: Ensure CSV is in correct path and `year` column exists
-- **MLflow runs not showing up**: Verify MLflow server is running with `mlflow server --host 0.0.0.0 --port 5000`
-- **API tests fail**: Check that `SpotifyFeatures` field names match test payload
-- **Dockerfile build fails**: Ensure `@champion` model download step uses correct MLflow URI
-
 ---
 
 ## Notes for Students
@@ -488,13 +538,13 @@ docker run -p 8000:8000 spotify-api:latest
    **The 2010 boundary marks the Streaming Era Shift:**
    - **Pre-2010 (Training)**: CD/iTunes era — longer songs, more acoustic, higher emotional valence
    - **Post-2010 (Production)**: Spotify/Apple Music era — shorter, punchier, more electronic, heavily compressed
-   
+
    **Audio features show statistically significant drift:**
-   - 🔊 Loudness: +1.56 dB (loudness wars & compression)
-   - 🎸 Acousticness: -5.75% (more synth, less acoustic)
-   - 😔 Valence: -6.5% (moodier music)
-   - ⚡ Energy: +4.3% (more intense production)
-   - ⏱️ Duration: -8.4 sec (streaming optimization)
+   - Loudness: +1.56 dB (loudness wars & compression)
+   - Acousticness: -5.75% (more synth, less acoustic)
+   - Valence: -6.5% (moodier music)
+   - Energy: +4.3% (more intense production)
+   - Duration: -8.4 sec (streaming optimization)
 
 2. **Audio Features**: Spotify audio features represent objective measurements of the audio:
    - Danceability: How suitable for dancing (0-1)
@@ -511,9 +561,20 @@ docker run -p 8000:8000 spotify-api:latest
 
 4. **Drift Monitoring**: In production, data drift detection prevents silent model degradation. You're comparing the distribution of incoming requests (API logs) to the training data distribution. Significant drift signals that the model may be underperforming.
 
+---
+
 ## Grading Rubric
 
-See `GRADING_RUBRIC.md` for detailed point breakdowns (20 points total).
+Full point breakdown is in [[GRADING_RUBRIC]] (20 points total).
+
+| Component | Points |
+|-----------|--------|
+| [[GRADING_RUBRIC#1. Data Pipeline (6 points)\|Data Pipeline]] | 6 |
+| [[GRADING_RUBRIC#2. Model Serving (5 points)\|Model Serving]] | 5 |
+| [[GRADING_RUBRIC#3. Drift Monitoring (3 points)\|Drift Monitoring]] | 3 |
+| [[GRADING_RUBRIC#4. Testing & CI/CD (4 points)\|Testing & CI/CD]] | 4 |
+| [[GRADING_RUBRIC#5. Documentation & Code Quality (2 points)\|Documentation]] | 2 |
+| **TOTAL** | **20** |
 
 ---
 
@@ -523,6 +584,5 @@ See `GRADING_RUBRIC.md` for detailed point breakdowns (20 points total).
 - [MLflow Docs](https://mlflow.org/docs/latest/)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [Pydantic Docs](https://docs.pydantic.dev/)
-- [Million Song Dataset Paper](https://www.ee.columbia.edu/~dpwe/pubs/BertEWL11-msd.pdf)
 
-Good luck! 🚀
+Good luck!
