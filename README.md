@@ -28,7 +28,7 @@ cd mlops-fundamentals-homework
 ### Step 3 — Create a working branch
 
 ```bash
-git checkout -b solution/<your-name>
+git checkout -b solution/christian-castro
 # Example: git checkout -b solution/maria-garcia
 ```
 
@@ -39,7 +39,7 @@ Complete all TODOs described in the [Implementation Checklist](#implementation-c
 ```bash
 git add .
 git commit -m "feat: implement data pipeline process step"
-git push origin solution/<your-name>
+git push origin solution/christian-castro
 ```
 
 ### Step 5 — Open a Pull Request

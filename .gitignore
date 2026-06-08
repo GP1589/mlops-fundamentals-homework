@@ -69,3 +69,4 @@ htmlcov/
 .tmp/
 tmp/
 *.log
+.vscode
