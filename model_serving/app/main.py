@@ -81,7 +81,11 @@ def predict(features: SpotifyFeatures) -> PredictionResponse:
 
 # Global variable to cache the loaded model
 loaded_model = None
-GENRES = ['Blues', 'Classical', 'Country', 'Electronic', 'Folk', 'Hip-Hop', 'Jazz', 'Pop', 'R&B', 'Rock']
+GENRES = [
+    'Blues', 'Classical', 'Country', 'Electronic', 'Folk',
+    'Hip-Hop', 'Jazz', 'Pop', 'R&B', 'Rock'
+]
+
 
 def load_champion_model():
     global loaded_model
@@ -92,7 +96,6 @@ def load_champion_model():
     if not os.path.exists(model_path):
         model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 
-    import mlflow
     try:
         import mlflow.sklearn
         loaded_model = mlflow.sklearn.load_model(model_path)
@@ -113,6 +116,7 @@ def load_champion_model():
                 logger.error(f"Failed to load champion model: {e3}")
                 raise e3
     return loaded_model
+
 
 def predict_genre(features: SpotifyFeatures) -> PredictionResponse:
     model = load_champion_model()

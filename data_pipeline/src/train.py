@@ -7,7 +7,6 @@ import logging
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import xgboost as xgb
-import joblib
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,9 +61,9 @@ def train(data_path: str, params: dict):
     # ENCODING:
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
-    
+
     # Save LabelEncoder to be able to use it later if needed or just let it be.
-    # The instructions don't say to save the label encoder but the API might need it? 
+    # The instructions don't say to save the label encoder but the API might need it?
     # Actually, the API will predict an integer, or maybe the pipeline includes it.
 
     # SCALING:
@@ -89,15 +88,15 @@ def train(data_path: str, params: dict):
 
         with mlflow.start_run(run_name=model_name):
             mlflow.log_params(model_params)
-            
+
             model.fit(X_to_use, y_encoded)
-            
+
             y_pred = model.predict(X_to_use)
             from sklearn.metrics import accuracy_score
             accuracy = accuracy_score(y_encoded, y_pred)
-            
+
             mlflow.log_metric("accuracy", accuracy)
-            
+
             if model_name == 'logistic_regression':
                 mlflow.sklearn.log_model(model, artifact_path="model")
             elif model_name == 'xgboost':
@@ -105,7 +104,6 @@ def train(data_path: str, params: dict):
 
     # Create the models directory to satisfy DVC's output requirement
     os.makedirs("models", exist_ok=True)
-
 
 
 if __name__ == "__main__":

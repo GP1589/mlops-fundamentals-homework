@@ -56,9 +56,12 @@ def evaluate_and_register(train_data_path: str = "data/train.csv"):
     except mlflow.exceptions.RestException as e:
         if "already exists" not in str(e).lower():
             logger.warning(f"Failed to create registered model: {e}")
-        
-    model_version = client.create_model_version(name=model_name, source=model_uri, run_id=best_run.info.run_id)
-    client.set_registered_model_alias(name=model_name, alias="champion", version=model_version.version)
+    model_version = client.create_model_version(
+        name=model_name, source=model_uri, run_id=best_run.info.run_id
+    )
+    client.set_registered_model_alias(
+        name=model_name, alias="champion", version=model_version.version
+    )
 
     metrics = {
         "best_run_id": best_run.info.run_id,

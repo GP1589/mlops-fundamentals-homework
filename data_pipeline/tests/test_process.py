@@ -1,4 +1,3 @@
-import pytest
 import os
 import pandas as pd
 import tempfile
@@ -39,7 +38,8 @@ def test_process_data_temporal_split():
         train_df = pd.read_csv(train_output)
         prod_df = pd.read_csv(prod_output)
 
-        assert len(train_df) == 3, f"Expected 3 training records (year <= 2010), got {len(train_df)}"
+        msg = f"Expected 3 training records (year <= 2010), got {len(train_df)}"
+        assert len(train_df) == 3, msg
         assert len(prod_df) == 2, f"Expected 2 production records (year > 2010), got {len(prod_df)}"
         assert (train_df["year"] <= 2010).all(), "Training data has years > 2010"
         assert (prod_df["year"] > 2010).all(), "Production data has years <= 2010"
@@ -83,8 +83,10 @@ def test_process_data_preserves_audio_features():
 
         # Validate all expected audio feature columns are present in both splits
         for feature in expected_audio_features:
-            assert feature in train_df.columns, f"Missing audio feature '{feature}' in training data"
-            assert feature in prod_df.columns, f"Missing audio feature '{feature}' in production data"
+            msg_train = f"Missing audio feature '{feature}' in training data"
+            assert feature in train_df.columns, msg_train
+            msg_prod = f"Missing audio feature '{feature}' in production data"
+            assert feature in prod_df.columns, msg_prod
 
 
 def test_process_data_year_boundary_condition():
@@ -123,8 +125,10 @@ def test_process_data_year_boundary_condition():
         assert len(prod_df) == 2, f"Expected 2 production records (2011, 2012), got {len(prod_df)}"
 
         # Verify exact years in each split
-        assert set(train_df["year"]) == {2009, 2010}, f"Expected years {{2009, 2010}} in train, got {set(train_df['year'])}"
-        assert set(prod_df["year"]) == {2011, 2012}, f"Expected years {{2011, 2012}} in prod, got {set(prod_df['year'])}"
+        msg_train = f"Expected years {{2009, 2010}} in train, got {set(train_df['year'])}"
+        assert set(train_df["year"]) == {2009, 2010}, msg_train
+        msg_prod = f"Expected years {{2011, 2012}} in prod, got {set(prod_df['year'])}"
+        assert set(prod_df["year"]) == {2011, 2012}, msg_prod
 
         # Verify threshold boundary
         assert (train_df["year"] <= 2010).all(), "Training data contains years > 2010"
