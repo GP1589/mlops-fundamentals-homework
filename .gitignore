@@ -7,8 +7,8 @@ data/prod_sim.csv
 data/
 
 # Models and artifacts
-models/
 mlruns/
+mlartifacts/
 *.pkl
 *.joblib
 *.joblib.z
@@ -69,3 +69,4 @@ htmlcov/
 .tmp/
 tmp/
 *.log
+.vscode

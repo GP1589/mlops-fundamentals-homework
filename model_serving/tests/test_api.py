@@ -1,17 +1,21 @@
+import httpx
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app, SpotifyFeatures
+from app.main import app
 
-client = TestClient(app)
-
-
-def test_health_check():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+# Configuramos el cliente asíncrono usando el transporte ASGI obligatorio
+transport = httpx.ASGITransport(app=app)
 
 
-def test_predict_endpoint_valid_payload():
+@pytest.mark.anyio
+async def test_health_check():
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.get("/health")
+        assert response.status_code == 200
+        assert response.json() == {"status": "healthy"}
+
+
+@pytest.mark.anyio
+async def test_predict_endpoint_valid_payload():
     """Test prediction endpoint with valid Spotify audio features."""
     payload = {
         "danceability": 0.7,
@@ -27,15 +31,18 @@ def test_predict_endpoint_valid_payload():
         "tempo": 120.0,
         "duration_ms": 240000
     }
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert "genre" in data
-    assert "confidence" in data
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post("/predict", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "genre" in data
+        assert "confidence" in data
 
 
-def test_predict_endpoint_invalid_payload():
+@pytest.mark.anyio
+async def test_predict_endpoint_invalid_payload():
     """Test prediction endpoint with invalid payload (missing required fields)."""
     payload = {"danceability": 0.7}
-    response = client.post("/predict", json=payload)
-    assert response.status_code == 422
+    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+        response = await client.post("/predict", json=payload)
+        assert response.status_code == 422

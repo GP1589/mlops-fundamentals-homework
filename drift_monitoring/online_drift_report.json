@@ -1,0 +1,104 @@
+{
+  "timestamp": "2026-06-09T01:28:02.995062+00:00",
+  "train_samples": 277474,
+  "production_samples": 12,
+  "features_with_drift": 8,
+  "drifted_features": [
+    "danceability",
+    "energy",
+    "loudness",
+    "speechiness",
+    "instrumentalness",
+    "liveness",
+    "valence",
+    "duration_ms"
+  ],
+  "details": {
+    "danceability": {
+      "ks_statistic": 0.8445620130174358,
+      "p_value": 4.033987449336083e-10,
+      "drift_detected": true,
+      "train_mean": 0.5166867122685369,
+      "prod_mean": 0.7000000000000001
+    },
+    "energy": {
+      "ks_statistic": 0.6294247388944549,
+      "p_value": 0.007877059819301317,
+      "drift_detected": true,
+      "train_mean": 0.6498807328448791,
+      "prod_mean": 0.7999999999999999
+    },
+    "key": {
+      "ks_statistic": 0.4913541448928548,
+      "p_value": 0.07370988405142309,
+      "drift_detected": false,
+      "train_mean": 5.2819147019180175,
+      "prod_mean": 5.0
+    },
+    "loudness": {
+      "ks_statistic": 0.8106164901936758,
+      "p_value": 9.233361657601664e-05,
+      "drift_detected": true,
+      "train_mean": -8.650665619121071,
+      "prod_mean": -5.0
+    },
+    "mode": {
+      "ks_statistic": 0.3007849384086437,
+      "p_value": 0.5516728676239973,
+      "drift_detected": false,
+      "train_mean": 0.6992150615913563,
+      "prod_mean": 1.0
+    },
+    "speechiness": {
+      "ks_statistic": 0.535588920042959,
+      "p_value": 0.0392261504428374,
+      "drift_detected": true,
+      "train_mean": 0.08129387762457023,
+      "prod_mean": 0.049999999999999996
+    },
+    "acousticness": {
+      "ks_statistic": 0.5016938523969814,
+      "p_value": 0.06408120608700088,
+      "drift_detected": false,
+      "train_mean": 0.2717145350108839,
+      "prod_mean": 0.09999999999999999
+    },
+    "instrumentalness": {
+      "ks_statistic": 0.751540684892999,
+      "p_value": 0.0005035167711621236,
+      "drift_detected": true,
+      "train_mean": 0.11149589580360682,
+      "prod_mean": 0.0
+    },
+    "liveness": {
+      "ks_statistic": 0.6200797191808962,
+      "p_value": 0.009379629157555715,
+      "drift_detected": true,
+      "train_mean": 0.22992920925924593,
+      "prod_mean": 0.19999999999999998
+    },
+    "valence": {
+      "ks_statistic": 0.6303113084469175,
+      "p_value": 0.007746302723019136,
+      "drift_detected": true,
+      "train_mean": 0.49685861028420686,
+      "prod_mean": 0.6
+    },
+    "tempo": {
+      "ks_statistic": 0.5025371746542018,
+      "p_value": 0.06334182012347761,
+      "drift_detected": false,
+      "train_mean": 121.91163683804608,
+      "prod_mean": 120.0
+    },
+    "duration_ms": {
+      "ks_statistic": 0.571949083517735,
+      "p_value": 0.021927029812631473,
+      "drift_detected": true,
+      "train_mean": 241601.9017169176,
+      "prod_mean": 240000.0
+    }
+  },
+  "drift_percentage": 66.66666666666666,
+  "status": "DRIFT_DETECTED"
+}
