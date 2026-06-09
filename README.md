@@ -1,5 +1,8 @@
 # Solución: Spotify Genre Classification & Drift Monitoring
 
+## Github repo
+### https://github.com/GP1589/mlops-fundamentals-homework
+
 Este documento detalla las instrucciones de instalación, ejecución y pruebas del proyecto utilizando los comandos y ajustes adaptados (con `uv` y `mlflow artifacts`).
 
 ---
@@ -127,3 +130,4 @@ docker build --network=host -t spotify-api:latest .
 # Correr el contenedor de Docker mapeando el puerto de API
 docker run -p 8000:8000 spotify-api:latest
 ```
+
